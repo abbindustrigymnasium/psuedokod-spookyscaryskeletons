@@ -1,0 +1,14 @@
+antbiljetter = 20 
+galnamusen = 3
+flygandekvasten = 4
+lustigahuset = 2
+
+kvot1 = antbiljetter/galnamusen
+kvot2 = antbiljetter/flygandekvasten
+kvot3 = antbiljetter/lustigahuset
+
+print "Åsa kan åka galnamusen" avrunda(kvot1) "gånger"
+print "Åsa kan åka flygandekvasten" avrunda(kvot2) "gånger"
+print "Åsa kan åka lustigahuset" avrunda(kvot3) "gånger"
+
+ 
