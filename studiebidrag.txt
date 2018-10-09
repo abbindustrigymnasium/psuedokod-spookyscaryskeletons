@@ -1,0 +1,13 @@
+antalar = 3
+manader = 10
+studiebidrag = 1250
+
+promt the user for birthmonth
+save input to birthmonth
+
+product = antalar*manader*studiebidrag
+
+check to see if birthmonth == July or August or September
+    if it is, print "Ditt totala studiebidrag är " product-625*3
+    if it is not, print "Ditt totala studiebidrag är " product
+
