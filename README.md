@@ -1,12 +1,19 @@
-# Psuedokod-grund
-Grund rep för att lära oss psuedokod och git
 
-## Instruktioner
-1. Ladda ner docx filen med instruktioner.
-2. Läs igenom dem noga.
-3. Skapa en kopia av denna repository.
-4. Följ instruktionerna i uppgiften.
+# Psuedokod-grund av Erik och Lindrit
 
 
-### Skiv gärna en liten readme efter ni är klara för att förklara vad era projekt gör.
-[Länk till hur man skriver text i markdown](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet)
+## Vad vi har gjort? 
+1. Skrivit psuedokod.
+2. Skrivit om psuedokod till Javascript och Python.
+
+## Erik
+Erik gjorde Gröna lund uppgiften i Javascript och Python. 
+Här är uppgiften:
+`3.	Åsa är på gröna lund och vill åka karuseller, Hon gillar att bara åka samma karuseller och har köpt ett kort med 20 biljetter på. De hon vill veta är hur många gånger hon kan åka bara galna musen, bara flygande kvasten eller gå bara i lustiga huset för sina 20 biljetter. Galna musen tar tre biljetter per gång, lustiga huset två och flygande kvasten 4.`
+
+## Lindrit
+Lindrit gjorde Bengt uppdiften i Javascript och Python. ´
+Här är uppgiften:
+`2.	Bengt ska handla tonfisk, han har 347 kronor och handlar gärna så många burkar som möjligt, hur många burkar får han om en burk kostar 13,95 men 30 kronor burken för varje trepack man köper.`
+
+
