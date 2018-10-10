@@ -6,7 +6,7 @@ def money(money):
        
 
     else:
-        amountofthreepacks = math.floor(money/30)
+        amountofthreepacks = math.floor(money/13.95)
      
         if amountofthreepacks < 1:
             money = math.floor(money/13.95)
