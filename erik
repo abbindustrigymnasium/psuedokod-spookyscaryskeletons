@@ -1,160 +1,183 @@
-#define D7 13
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-
+#include <ESP8266WiFi.h>     
+//Både ArduinoJson och Wifimanager måste installeras som bibliotek, de finns med i bibliotekskatalogen, tänk att ArduinoJSon versionen som ska väljas är 5.13 och inte senaste.     
+#include <ArduinoJson.h> // V 5.13 inte 6! https://arduinojson.org/?utm_source=meta&utm_medium=library.properties
 //needed for library
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-#include <ArduinoJson.h>
-
-// globala variabler
-String lampName = "lampa1"; // lampans namn
-int hardValue = 0; // Hårdheten på lampan
-int strenghtValue = 0; // styrkan på lampam
-bool lampExist = false; // finns lampan eller är den ny?
-bool gottenValues = false; // har vi hämtat några värden redan från databasen
+#define D7 13 // SPI Bus MOSI
 
 void setup() {
+      pinMode(13, OUTPUT); //Declare GPIO13 as output
+ 
     // put your setup code here, to run once:
     Serial.begin(115200);
-    pinMode(13, OUTPUT);
+  //Från Wifimanagers hemsida.
     //WiFiManager
     //Local intialization. Once its business is done, there is no need to keep it around
     WiFiManager wifiManager;
-
-    wifiManager.resetSettings();
     //reset saved settings
+    //wifiManager.resetSettings();
+    
     //set custom ip for portal
     //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+
     //fetches ssid and pass from eeprom and tries to connect
     //if it does not connect it starts an access point with the specified name
     //here  "AutoConnectAP"
     //and goes into a blocking loop awaiting configuration
-    wifiManager.autoConnect("erikwifi");
+    wifiManager.autoConnect("Connecttor");
     //or use this for auto generated name ESP + ChipID
-    //wifiManager.autoConnect() 
+    //wifiManager.autoConnect();
+
     //if you get here you have connected to the WiFi
     Serial.println("connected...yeey :)");
+
 }
 
-// hämtar värden från backend och databsen
-String getfromDB(String host){
-  String url="/light/" + lampName; 
-  String output = "GET" + url + " HTTP/1.1\r\n"+ 
-                "Host: " + host + "\r\n" + 
-                "\r\nConnection: close\r\n\r\n";
-   return output;
+ String Lampname="kvicksund"; //Lampans namn
+ int Hardvalue=0; //Hårdheten
+ int Strengthvalue= 0; //Styrkan
+ bool LampExist=false; //Finns lampan redan eller är den ny?
+ bool GottenValues = false; //Har vi hämtat några värden redan från databasen?
+
+String GetfromDB(String host){
+String url= "/light/"+Lampname; //Urlen jag använder för att posta mina värden
+  // Detta skickar värdena till servern.
+   String Output ="GET "+ url + " HTTP/1.1\r\n" + //Säger att det är typen post, kan vara patch, get,delete beroende på vad man vill göra., samt urlen vi ska till.
+                 "Host: " + host+ "\r\n" + //Berättar vilken host det är vi ansluter till
+                 "\r\nConnection: close\r\n\r\n"; //skickar vår buffer som  body
+ return Output;
 }
 
-
-String sendtoDB(String host){
-  String type = "POST ";
-  if(gottenValues == true){
-    String url="/light/"; // url där värderna ska postas
-    Serial.println("Skickar värden för första gången");
-    StaticJsonBuffer<300>jsonBuffer;
-    JsonObject& root = jsonBuffer.createObject();
-    root["name"] = lampName;
-    root["hard"] = hardValue;
-    root["strenght"] = strenghtValue;
-    String buffer;
-    root.printTo(buffer);
-    if(lampExist == true){
-      type="PATCH";
-      Serial.println("uppdaterar värdet!");
-    }
-    String output = type+url+" HTTP/1.1\r\n" + 
-                  "Host: " + host + "\r\n"+ 
-                  "Content-Type: application/json\r\n" +
-                  "Content-Length: " + buffer.length() + "\r\n" + 
-                  "\r\n" + 
-                  buffer + "\n";
-    return output;
-
-    }
-    else
-    return "";
+String SendtoDB(String host){
+  String type ="POST ";
+  if(GottenValues==true)
+  {
+  String url= "/light/"; //Urlen jag använder för att posta mina värden
+   
+  StaticJsonBuffer<300> jsonBuffer; //Skapar en buffer, det vill säga så mycket minne som vårt blivande jsonobjekt får använda.
+  JsonObject& root = jsonBuffer.createObject(); //Skapar ett jsonobjekt som vi kallar root
+  root["name"] = Lampname; //Skapar parameterna name och ger den värdet Vykort
+  root["hard"] = Hardvalue;
+  root["strength"] = Strengthvalue;// Samma som ovan
+  String buffer;  //Skapar en string som vi kallar buffer
+  root.printTo(buffer); //Lägger över och konverterar vårt jsonobjekt till en string och sparar det i buffer variabeln.
+  if(LampExist==true)
+  {
+  type ="PATCH ";
+      Serial.println("Uppdaterar värdet!");
+  }
+//här någonstans ska jag anvädna POST eller PATCH beroende på om värdet finns!!!!
+  // Detta skickar värdena till servern.
+   String Output =type+url + " HTTP/1.1\r\n" + //Säger att det är typen post, kan vara patch, get,delete beroende på vad man vill göra., samt urlen vi ska till.
+                 "Host: " + host+ "\r\n" + //Berättar vilken host det är vi ansluter till
+                 "Content-Type: application/json\r\n" + //Säger att det är Json format vi skickar (dock konverterat till en string för att kunna skickas.
+                 "Content-Length: " + buffer.length() + "\r\n" + //Berättar hur stort packet vi ska skicka.
+                 "\r\n" + // Detta är en extra radbrytning för att berätta att det är här bodyn startar.
+                 buffer + "\n"; //skickar vår buffer som  body
+ 
+ return Output;
+  }
+  else
+  return "";
 }
 
-void connecttoDB(String input){
-  const int httpPort = 3000; 
-  const char* host="iot.abbindustrigymnasium.se";
-  Serial.print("connecting to ");
-  Serial.println(host);
+void ConnecttoDB(String input){
 
+   const int httpPort = 3000; //porten vi ska till
+  const char* host = "iot.abbindustrigymnasium.se";//Adressen vi ska ansluta till. 7Laddaremygglustbil "http://iot.abbindustrigymnasium.se"
+    
+     Serial.print("connecting to ");
+ Serial.println(host); //Skriver ut i terminalen för att veta vart vi ska skicka värdena.
+  
+  // Use WiFiClient class to create TCP connections
   WiFiClient client;
-  if (!client.connect(host, httpPort)){
-    Serial.println("connection failed, we get em' next time");
+  if (!client.connect(host, httpPort)) { //Försöker ansluta
+    Serial.println("connection failed");
     return;
   }
+  else  //Om vi kan ansluta så ska lampa lysa
+  {
+    //digitalWrite(13, HIGH);
+    }
+if(input =="GET")
+client.print(GetfromDB(host));
+else
+client.print(SendtoDB(host));
 
-  if (input == "GET")
-    client.print(getfromDB(host));
-  else
-    client.print(sendtoDB(host));
   unsigned long timeout = millis();
-  while (client.available()==0){
-    if(millis()- timeout > 10000){
-      Serial.println (">>> Client timeout");
+  while (client.available() == 0) {
+    if (millis() - timeout > 10000) {
+      Serial.println(">>> Client Timeout !");
       client.stop();
       return;
-    } 
-  }
-  String json = "";
-  boolean httpBody = false; 
-  while (client.available()){
-    String line = client.readStringUntil('\r');
-    if (!httpBody && line.charAt(1) == '{'){
-      httpBody = true;
-    }
-    if (httpBody){
-      json += line;
     }
   }
-  Serial.println("got data");
-  Serial.println(json);
-  if (input == "GET")
-    updatevalues(json);
-    Serial.println();
-    Serial.println("closing connecion");
-  
- 
+
+String json = ""; //De delarna vi vill ha ut av meddelandet sparar vi i stringen json
+boolean httpBody = false; //bool för att säa att vi har kommit ner till bodydelen
+// tittar om vi har anslutit till clienten
+while (client.available()) {
+  String line = client.readStringUntil('\r'); //Läser varje rad tills det är slut på rader
+  if (!httpBody && line.charAt(1) == '{') { //Om vi hittar { så vet vi att vi har nått bodyn
+    httpBody = true; //boolen blir true för att vi ska veta för nästa rad att vi redan är i bodyn
+  }
+  if (httpBody) { //Om bodyn är sann lägg till raden i json variabeln
+    json += line;
+  }
+}
+//Skriver ut bodyns data
+    Serial.println("Got data:");
+    Serial.println(json);
+  if(input =="GET") //Om det är Get så kör vi metoden UpdateValues
+    UpdateValues(json);
+
+  Serial.println();
+  Serial.println("closing connection");
 }
 
-// uppdaterar lokala värden med värden från backend
-void updatevalues(String json){
-  StaticJsonBuffer<400>jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(json);
-  String dataL = root["name"];
-  if (dataL != "none"){
+void UpdateValues(String json){
+      //Vi skapar ett Jsonobjekt där vi klistrar in värdena från bodyn
+      StaticJsonBuffer<400> jsonBuffer;
+    JsonObject& root = jsonBuffer.parseObject(json);
+    //Vi skapar sedan lokala strings där vi lägger över värdena en i taget
+    String dataL = root["name"];
+         if(dataL!="none")
+         {
     int datah = root["hard"];
-    int datas = root["strenght"];
-    lampName = dataL;
-    hardValue = datah;
-    strenghtValue = datas;
-    lampExist = true;
+    int datas = root["strength"];
+    //Därefter skriver vi över de lokala värdena till våra globala värden för lampan
+     Lampname = dataL; 
+     Hardvalue =datah;
+     Strengthvalue = datas;
 
-  }else{
-    String mess = root ["message"];
-    Serial.print(mess);
-  }
-  gottenValues = true; 
+       LampExist=true;
+     Serial.print(Strengthvalue);
+         }
+         else
+         {
+          String Mess =root["message"];
+         Serial.print(Mess);
+         }
+  GottenValues = true;
 }
 
-void updatelamp(){
-  if (strenghtValue > 50){
-    digitalWrite(13, HIGH);
-  }else{
-    digitalWrite(13,LOW);
-  }
+void UpdatingLamp(){
+  if(Strengthvalue>50)
+  digitalWrite(13, HIGH);
+else
+  digitalWrite(13, LOW);
 }
-
-
 
 void loop() {
-    // put your main code here, to run repeatedly:
-    connecttoDB("GET");
-    updatelamp();
-    delay(10000);
+ ConnecttoDB("GET"); 
+  UpdatingLamp();
+  delay(10000);
+ // ConnecttoDB("POST");
+ //delay(10000);
 }
+   //analog write, 0 -1023
+
  
+  // digitalWrite(13, LOW);
