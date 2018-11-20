@@ -1,0 +1,160 @@
+#define D7 13
+#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+
+//needed for library
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+#include <ArduinoJson.h>
+
+// globala variabler
+String lampName = "lampa1"; // lampans namn
+int hardValue = 0; // Hårdheten på lampan
+int strenghtValue = 0; // styrkan på lampam
+bool lampExist = false; // finns lampan eller är den ny?
+bool gottenValues = false; // har vi hämtat några värden redan från databasen
+
+void setup() {
+    // put your setup code here, to run once:
+    Serial.begin(115200);
+    pinMode(13, OUTPUT);
+    //WiFiManager
+    //Local intialization. Once its business is done, there is no need to keep it around
+    WiFiManager wifiManager;
+
+    wifiManager.resetSettings();
+    //reset saved settings
+    //set custom ip for portal
+    //wifiManager.setAPStaticIPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+    //fetches ssid and pass from eeprom and tries to connect
+    //if it does not connect it starts an access point with the specified name
+    //here  "AutoConnectAP"
+    //and goes into a blocking loop awaiting configuration
+    wifiManager.autoConnect("erikwifi");
+    //or use this for auto generated name ESP + ChipID
+    //wifiManager.autoConnect() 
+    //if you get here you have connected to the WiFi
+    Serial.println("connected...yeey :)");
+}
+
+// hämtar värden från backend och databsen
+String getfromDB(String host){
+  String url="/light/" + lampName; 
+  String output = "GET" + url + " HTTP/1.1\r\n"+ 
+                "Host: " + host + "\r\n" + 
+                "\r\nConnection: close\r\n\r\n";
+   return output;
+}
+
+
+String sendtoDB(String host){
+  String type = "POST ";
+  if(gottenValues == true){
+    String url="/light/"; // url där värderna ska postas
+    Serial.println("Skickar värden för första gången");
+    StaticJsonBuffer<300>jsonBuffer;
+    JsonObject& root = jsonBuffer.createObject();
+    root["name"] = lampName;
+    root["hard"] = hardValue;
+    root["strenght"] = strenghtValue;
+    String buffer;
+    root.printTo(buffer);
+    if(lampExist == true){
+      type="PATCH";
+      Serial.println("uppdaterar värdet!");
+    }
+    String output = type+url+" HTTP/1.1\r\n" + 
+                  "Host: " + host + "\r\n"+ 
+                  "Content-Type: application/json\r\n" +
+                  "Content-Length: " + buffer.length() + "\r\n" + 
+                  "\r\n" + 
+                  buffer + "\n";
+    return output;
+
+    }
+    else
+    return "";
+}
+
+void connecttoDB(String input){
+  const int httpPort = 3000; 
+  const char* host="iot.abbindustrigymnasium.se";
+  Serial.print("connecting to ");
+  Serial.println(host);
+
+  WiFiClient client;
+  if (!client.connect(host, httpPort)){
+    Serial.println("connection failed, we get em' next time");
+    return;
+  }
+
+  if (input == "GET")
+    client.print(getfromDB(host));
+  else
+    client.print(sendtoDB(host));
+  unsigned long timeout = millis();
+  while (client.available()==0){
+    if(millis()- timeout > 10000){
+      Serial.println (">>> Client timeout");
+      client.stop();
+      return;
+    } 
+  }
+  String json = "";
+  boolean httpBody = false; 
+  while (client.available()){
+    String line = client.readStringUntil('\r');
+    if (!httpBody && line.charAt(1) == '{'){
+      httpBody = true;
+    }
+    if (httpBody){
+      json += line;
+    }
+  }
+  Serial.println("got data");
+  Serial.println(json);
+  if (input == "GET")
+    updatevalues(json);
+    Serial.println();
+    Serial.println("closing connecion");
+  
+ 
+}
+
+// uppdaterar lokala värden med värden från backend
+void updatevalues(String json){
+  StaticJsonBuffer<400>jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(json);
+  String dataL = root["name"];
+  if (dataL != "none"){
+    int datah = root["hard"];
+    int datas = root["strenght"];
+    lampName = dataL;
+    hardValue = datah;
+    strenghtValue = datas;
+    lampExist = true;
+
+  }else{
+    String mess = root ["message"];
+    Serial.print(mess);
+  }
+  gottenValues = true; 
+}
+
+void updatelamp(){
+  if (strenghtValue > 50){
+    digitalWrite(13, HIGH);
+  }else{
+    digitalWrite(13,LOW);
+  }
+}
+
+
+
+void loop() {
+    // put your main code here, to run repeatedly:
+    connecttoDB("GET");
+    updatelamp();
+    delay(10000);
+}
+ 
